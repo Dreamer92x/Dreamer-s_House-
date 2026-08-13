@@ -73,6 +73,24 @@
 
         @media(max-width:700px){.input-area .label{font-size:18px}.input-area input{font-size:28px;padding:15px}.choice-buttons button{font-size:18px;padding:15px 30px}.bsod-content{padding:15px}.bsod-content .title{font-size:28px}.bsod-content .err{font-size:14px}.bsod-content .dump-grid{font-size:13px;grid-template-columns:1fr}.linux .term{font-size:13px;padding:15px}}
         @media(max-width:480px){.input-area .label{font-size:14px}.input-area input{font-size:20px;padding:12px}.choice-buttons{gap:20px}.choice-buttons button{font-size:16px;padding:12px 20px}.bsod-content{padding:12px}.bsod-content .title{font-size:22px}.bsod-content .err{font-size:12px}.bsod-content .dump-grid{font-size:11px}.linux .term{font-size:11px;padding:10px}}
+
+        .darken-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0);
+            pointer-events: none;
+            z-index: 1001;
+            transition: background 2s ease;
+        }
+        .darken-overlay.active {
+            background: rgba(0,0,0,0.85);
+        }
+        .darken-overlay.light {
+            background: rgba(0,0,0,0);
+        }
     </style>
 </head>
 <body>
@@ -102,7 +120,7 @@
         <div class="err"><span class="hl">***</span> Driver: <span class="hl">ntoskrnl.exe</span> — IRQL_NOT_LESS_OR_EQUAL</div>
         <div class="err"><span class="hl">***</span> Physical memory: <span class="hl">0%</span> | Page: <span class="hl">0x00000000</span></div>
         <div class="memory-dump"><span class="blink">►</span> DUMPING PHYSICAL MEMORY: <span id="dumpProgress">0</span>% &nbsp;|&nbsp; Cache: DISABLED &nbsp;|&nbsp; CRC: 0x7A3F</div>
-        <div class="bar-wrap"><div class="bar"></div></div>
+        <div class="bar-wrap"><div class="bar" id="progressBar"></div></div>
         <div class="dump-grid">
             <span><span class="label">Call stack:</span> <span class="value">0xFFFFF800`02A4B000</span></span>
             <span><span class="label">IRQL:</span> <span class="value">0x0000000A</span></span>
@@ -132,6 +150,8 @@
     <div class="note">— Caesar Augustus</div>
 </div>
 
+<div class="darken-overlay" id="darkenOverlay"></div>
+
 <script>
     const bugInput = document.getElementById('bugInput');
     const inputArea = document.getElementById('inputArea');
@@ -143,9 +163,99 @@
     const finalText = document.getElementById('finalText');
     const dumpProgress = document.getElementById('dumpProgress');
     const errorCodeValue = document.getElementById('errorCodeValue');
+    const progressBar = document.getElementById('progressBar');
+    const darkenOverlay = document.getElementById('darkenOverlay');
 
     let isCompleted = false;
     let dimTriggered = false;
+    let timerInterval = null;
+    let isPaused = false;
+    let seconds = 0;
+    const maxSec = 55;
+
+    function typeText(element, text, callback) {
+        let index = 0;
+        let charDelay = 30;
+        let pauseDelay = 3500;
+        let isPaused = false;
+        let pauseTimer = null;
+
+        function typeChar() {
+            if (isPaused) return;
+            if (index < text.length) {
+                const char = text.charAt(index);
+                element.textContent += char;
+                index++;
+
+                if (char === '.' || char === '!' || char === '?') {
+                    isPaused = true;
+                    clearTimeout(pauseTimer);
+                    pauseTimer = setTimeout(() => {
+                        isPaused = false;
+                        typeChar();
+                    }, pauseDelay);
+                } else {
+                    setTimeout(typeChar, charDelay);
+                }
+            } else {
+                if (callback) callback();
+            }
+        }
+
+        element.textContent = '';
+        typeChar();
+    }
+
+    function updateProgress() {
+        if (isPaused) return;
+        seconds++;
+        const pct = Math.min(Math.round((seconds / maxSec) * 100), 100);
+        if (dumpProgress) dumpProgress.textContent = pct;
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (seconds >= maxSec) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            finalMessage.classList.add('active');
+            bsod.classList.remove('active');
+            linuxTerminal.classList.remove('active');
+        }
+    }
+
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        seconds = 0;
+        timerInterval = setInterval(updateProgress, 1000);
+    }
+
+    function pauseTimer() {
+        isPaused = true;
+        if (progressBar) {
+            progressBar.style.animationPlayState = 'paused';
+        }
+    }
+
+    function resumeTimer() {
+        isPaused = false;
+        if (progressBar) {
+            progressBar.style.animationPlayState = 'running';
+        }
+    }
+
+    function darkenScreen(callback) {
+        darkenOverlay.classList.add('active');
+        pauseTimer();
+        setTimeout(() => {
+            if (callback) callback();
+        }, 2000);
+    }
+
+    function lightenScreen(callback) {
+        darkenOverlay.classList.remove('active');
+        resumeTimer();
+        setTimeout(() => {
+            if (callback) callback();
+        }, 2000);
+    }
 
     function checkBug() {
         const val = bugInput.value.trim().toLowerCase();
@@ -157,20 +267,36 @@
             if (val === '20xx') {
                 finalMessage.innerHTML = '';
                 
-                // Основной текст
                 const mainText = document.createElement('div');
                 mainText.className = 'caesar-text';
-                mainText.textContent = 'Не один человек не может играть 2 личности. Я должен ввести этот сайт лишь бы не сойти с ума. С каждым днём я всё больше и больше теряю грань между собой и моим другом. Запомните, запомните раз и навсегда. Код - 312. Код - 312. Код 312';
+                mainText.style.whiteSpace = 'pre-wrap';
                 finalMessage.appendChild(mainText);
                 
-                // Отдельный блок для "Пройден 1 этап"
-                const stageText = document.createElement('div');
-                stageText.className = 'caesar-text';
-                stageText.style.marginTop = '30px';
-                stageText.style.fontWeight = 'bold';
-                stageText.style.color = '#88aaff';
-                stageText.textContent = 'Пройден 1 этап';
-                finalMessage.appendChild(stageText);
+                let stageAdded = false;
+                
+                darkenScreen(() => {
+                    typeText(mainText, 'Не один человек не может играть 2 личности. Я должен ввести этот сайт лишь бы не сойти с ума. С каждым днём я всё больше и больше теряю грань между собой и моим другом. Запомните, запомните раз и навсегда. Код - 312. Код - 312. Код 312', function() {
+                        lightenScreen(() => {
+                            const stageText = document.createElement('div');
+                            stageText.className = 'caesar-text';
+                            stageText.style.marginTop = '30px';
+                            stageText.style.fontWeight = 'bold';
+                            stageText.style.color = '#88aaff';
+                            stageText.style.opacity = '0';
+                            stageText.style.transition = 'opacity 2s ease';
+                            stageText.textContent = 'Пройден 1 этап';
+                            finalMessage.appendChild(stageText);
+                            
+                            setTimeout(() => {
+                                stageText.style.opacity = '1';
+                            }, 100);
+                            
+                            setTimeout(() => {
+                                darkenOverlay.classList.remove('active');
+                            }, 500);
+                        });
+                    });
+                });
                 
                 finalMessage.classList.add('active');
                 mainContainer.classList.add('fade-out');
@@ -186,21 +312,6 @@
 
     bugInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkBug(); });
     bugInput.addEventListener('input', checkBug);
-
-    function startTimer() {
-        let seconds = 0, maxSec = 55;
-        const interval = setInterval(() => {
-            seconds++;
-            const pct = Math.min(Math.round((seconds / maxSec) * 100), 100);
-            if (dumpProgress) dumpProgress.textContent = pct;
-            if (seconds >= maxSec) {
-                clearInterval(interval);
-                finalMessage.classList.add('active');
-                bsod.classList.remove('active');
-                linuxTerminal.classList.remove('active');
-            }
-        }, 1000);
-    }
 
     function triggerDim(element) {
         if (dimTriggered) return;
