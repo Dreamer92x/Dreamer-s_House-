@@ -73,6 +73,10 @@
 
         @media(max-width:700px){.input-area .label{font-size:18px}.input-area input{font-size:28px;padding:15px}.choice-buttons button{font-size:18px;padding:15px 30px}.bsod-content{padding:15px}.bsod-content .title{font-size:28px}.bsod-content .err{font-size:14px}.bsod-content .dump-grid{font-size:13px;grid-template-columns:1fr}.linux .term{font-size:13px;padding:15px}}
         @media(max-width:480px){.input-area .label{font-size:14px}.input-area input{font-size:20px;padding:12px}.choice-buttons{gap:20px}.choice-buttons button{font-size:16px;padding:12px 20px}.bsod-content{padding:12px}.bsod-content .title{font-size:22px}.bsod-content .err{font-size:12px}.bsod-content .dump-grid{font-size:11px}.linux .term{font-size:11px;padding:10px}}
+
+        .font-20xx {
+            font-family: 'DotumChe', 'Courier New', monospace;
+        }
     </style>
 </head>
 <body>
@@ -129,7 +133,7 @@
 
 <div class="final" id="finalMessage">
     <div class="caesar-text" id="finalText">Pljbqfjbp F'j promofpba vlr'sb jxab fq qefp cxo. Jxvyb vlr zlria qxhb x zilpbo illh xq qeb boolop?</div>
-    <div class="note">— Caesar Augustus</div>
+    <div class="note">— Tiberius Iulius Caesar</div>
 </div>
 
 <script>
@@ -231,7 +235,7 @@
                 finalMessage.innerHTML = '';
                 
                 const mainText = document.createElement('div');
-                mainText.className = 'caesar-text';
+                mainText.className = 'caesar-text font-20xx';
                 mainText.style.whiteSpace = 'pre-wrap';
                 finalMessage.appendChild(mainText);
                 
